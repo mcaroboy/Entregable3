@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Cripto vs. Oro: ¿qué tan volátil es en vivo?</title>
+  <link href="style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <header id="header">
+    <h1 id="titulo">
+      La volatilidad de las criptomonedas frente al oro en tiempo real
+    </h1>
+
+    <p id="subtitulo">
+      Compara la fluctuación de los precios de diferentes criptomonedas frente al oro (PAXG) en tiempo real.
+      PAX Gold (PAXG) es una stablecoin ERC-20 respaldada por reservas físicas de oro en bóvedas protegidas ubicadas en Londres.
+    </p>
+  </header>
+
+  <div id="controles">
+    <label for="menuMonedas">Criptomoneda:</label>
+    <select name="monedas" id="menuMonedas">
+      <option value="bitcoin" selected="selected">Bitcoin</option>
+      <option value="ethereum">Ethereum</option>
+      <option value="monero">Monero</option>
+      <option value="litecoin">Litecoin</option>
+    </select>
+  </div>
+
+  <!-- Tooltip flotante -->
+  <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+
+  <section id="modulo1">
+    <div class="live-pill" aria-label="estado de transmisión">
+      <span class="dot"></span>
+      <span>DATOS EN VIVO</span>
+    </div>
+
+    <div id="kpis">
+      <p><strong>Hora local:</strong> <span id="horaActual">--:--:--</span></p>
+      <p><strong>Actualizaciones recibidas:</strong> <span id="contadorMensajes">0</span></p>
+      <p><strong>Última actualización:</strong> <span id="ultimaActualizacion">—</span></p>
+      <p><strong>Oro (PAXG):</strong> <span id="oroValor">—</span> USD</p>
+    </div>
+
+    <div id="textoDinamico">
+      <p id="contexto1"></p>
+      <p id="contexto2"></p>
+    </div>
+  </section>
+
+  <section id="modulo2">
+    <h2 class="h2mod">Precio (USD) — en vivo</h2>
+    <div id="chartPrecio"></div>
+  </section>
+
+  <section id="modulo3">
+    <h2 class="h2mod">Fluctuación (%) — comparada con el oro (PAXG)</h2>
+    <div id="chartVolatilidad"></div>
+  </section>
+
+  <section id="descripcion">
+    <h2>¿Qué encontramos en estos datos?</h2>
+    <p>
+      La primera gráfica muestra el precio en USD del activo seleccionado a través del tiempo.
+      La segunda gráfica muestra la fluctuación (%) desde que abriste la página, comparando el activo seleccionado con el oro (PAXG).
+      Así, estas gráficas te permiten ver “qué tanto se mueven” las criptomonedas frente al oro, para que puedas tomar decisiones informadas.
+    </p>
+    <p class="nota">
+      Nota: PAXG es un token respaldado por oro y se usa aquí como referencia de “activo refugio”.
+    </p>
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/d3.min.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

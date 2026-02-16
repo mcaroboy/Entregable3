@@ -1,0 +1,269 @@
+/* ---------------------------
+   VARIABLES DE COLOR (CREMA)
+----------------------------*/
+:root {
+  --fondo: #FBF7EF;
+  --tarjeta: #F3EBDD;
+  --tarjeta-2: #EFE4D2;
+  --borde: #E4D8C3;
+
+  --texto: #3A3228;
+  --texto-sec: #7A6F5A;
+
+  --linea: #C6A969;
+  --sube: #6BA368;
+  --baja: #D97B66;
+
+  --sombra: rgba(58, 50, 40, 0.08);
+}
+
+
+/* ---------------------------
+   BASE GENERAL
+----------------------------*/
+body {
+  margin: 0;
+  padding: 28px;
+  background: var(--fondo);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--texto);
+}
+
+
+/* ---------------------------
+   HEADER / TÍTULO
+----------------------------*/
+#titulo {
+  font-size: 42px;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+#subtitulo {
+  margin-top: 8px;
+  color: var(--texto-sec);
+  max-width: 900px;
+  line-height: 1.4;
+}
+
+
+/* ---------------------------
+   SELECT / MENÚ
+----------------------------*/
+#menuMonedas {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--borde);
+  background: white;
+  color: var(--texto);
+  font-size: 15px;
+  box-shadow: 0 2px 6px var(--sombra);
+}
+
+#menuMonedas:focus {
+  outline: none;
+  border-color: var(--linea);
+}
+
+
+
+#menuComparar {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--borde);
+  background: white;
+  color: var(--texto);
+  font-size: 15px;
+  box-shadow: 0 2px 6px var(--sombra);
+}
+
+#menuComparar:focus {
+  outline: none;
+  border-color: var(--linea);
+}
+
+
+/* ---------------------------
+   TARJETAS / MÓDULOS
+----------------------------*/
+#modulo1,
+#modulo2,
+#descripcion {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 18px;
+  padding: 18px;
+  margin-top: 18px;
+  box-shadow: 0 4px 14px var(--sombra);
+}
+
+
+/* ---------------------------
+   PILLA EN VIVO
+----------------------------*/
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--tarjeta-2);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.live-pill .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #D97B66;
+  box-shadow: 0 0 8px rgba(217, 123, 102, 0.6);
+}
+
+
+/* ---------------------------
+   KPIs TIEMPO REAL
+----------------------------*/
+#kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+#kpis p {
+  margin: 0;
+  color: var(--texto-sec);
+  font-size: 14px;
+}
+
+
+/* ---------------------------
+   TEXTOS DINÁMICOS
+----------------------------*/
+#contexto1 {
+  font-size: 20px;
+  margin: 14px 0 6px 0;
+  font-weight: 600;
+}
+
+#contexto2 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--texto-sec);
+}
+
+
+/* ---------------------------
+   GRÁFICA (SVG CONTENEDOR)
+----------------------------*/
+#modulo2 {
+  padding: 10px;
+}
+
+/* Línea D3 */
+.linea {
+  stroke: var(--linea);
+  stroke-width: 2.5;
+  fill: none;
+}
+
+/* Ejes */
+.ejeX path,
+.ejeY path,
+.ejeX line,
+.ejeY line {
+  stroke: var(--borde);
+}
+
+.ejeX text,
+.ejeY text {
+  fill: var(--texto-sec);
+  font-size: 12px;
+}
+
+
+/* ---------------------------
+   DESCRIPCIÓN
+----------------------------*/
+#descripcion h2 {
+  margin-top: 0;
+}
+
+#descripcion p {
+  color: var(--texto-sec);
+  line-height: 1.6;
+  max-width: 900px;
+}
+
+#descripcion .nota {
+  font-size: 14px;
+  color: #9A8F7A;
+}
+
+
+/* ---------------------------
+   RESPONSIVE
+----------------------------*/
+@media (max-width: 768px) {
+  body {
+    padding: 16px;
+  }
+
+  #titulo {
+    font-size: 30px;
+  }
+
+  #contexto1 {
+    font-size: 18px;
+  }
+}
+
+#controles{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+#controles label{
+  color: var(--texto-sec);
+  font-size: 14px;
+}
+
+.tooltip{
+  position: absolute;
+  pointer-events: none;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 25px rgba(58, 50, 40, 0.15);
+  color: var(--texto);
+  font-size: 13px;
+  line-height: 1.35;
+  max-width: 260px;
+}
+
+.tooltip .t-title{
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.tooltip .row{
+  display:flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tooltip .name{
+  color: var(--texto-sec);
+}
+
+.tooltip .val{
+  font-weight: 700;
+}
