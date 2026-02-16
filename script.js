@@ -1,21 +1,33 @@
+/* ============================
+   1) FUENTE DE DATOS (BINANCE + ORO PAXG)
+   - Intenta WebSocket
+   - Si falla (bloqueo/red), usa REST polling
+============================ */
 
-
-/*  1 FUENTE DE DATOS (BINANCE JUNTO AL ORO paxgusdt) */
-var ws = new WebSocket(
+// URL combined streams (WS)
+const WS_URL =
   "wss://stream.binance.com:9443/stream?streams=" +
-    "btcusdt@miniTicker/" +
-    "ethusdt@miniTicker/" +
-    "xmrusdt@miniTicker/" +
-    "ltcusdt@miniTicker/" +
-    "paxgusdt@miniTicker"
-);
+  "btcusdt@miniTicker/" +
+  "ethusdt@miniTicker/" +
+  "xmrusdt@miniTicker/" +
+  "ltcusdt@miniTicker/" +
+  "paxgusdt@miniTicker";
+
+// URLs REST (fallback)
+const REST_URLS = {
+  bitcoin: "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+  ethereum: "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT",
+  monero: "https://api.binance.com/api/v3/ticker/price?symbol=XMRUSDT",
+  litecoin: "https://api.binance.com/api/v3/ticker/price?symbol=LTCUSDT",
+  oro: "https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT",
+};
 
 var simbolosBinance = {
   BTCUSDT: "bitcoin",
   ETHUSDT: "ethereum",
   XMRUSDT: "monero",
   LTCUSDT: "litecoin",
-  PAXGUSDT: "oro"
+  PAXGUSDT: "oro",
 };
 
 const activos = [
@@ -23,12 +35,19 @@ const activos = [
   { nombre: "ethereum", precioActual: null, datos: [] },
   { nombre: "monero", precioActual: null, datos: [] },
   { nombre: "litecoin", precioActual: null, datos: [] },
-  { nombre: "oro", precioActual: null, datos: [] } // PAXG
+  { nombre: "oro", precioActual: null, datos: [] }, // PAXG
 ];
 
 var MAX_PUNTOS = 220;
 
-/* 2 INFO TIEMPO REAL */
+// Estado fallback
+let usandoFallback = false;
+let pollTimer = null;
+let ws = null;
+
+/* ============================
+   2) INFO TIEMPO REAL
+============================ */
 
 var horaActualEl = document.getElementById("horaActual");
 var contadorMensajesEl = document.getElementById("contadorMensajes");
@@ -45,8 +64,6 @@ function formatearHora(ms) {
 setInterval(function () {
   if (horaActualEl) horaActualEl.innerText = formatearHora(Date.now());
 }, 1000);
-
-
 
 var menu = document.getElementById("menuMonedas");
 var tooltip = document.getElementById("tooltip");
@@ -71,9 +88,12 @@ function nearestByTime(arr, t) {
   const a = arr[i - 1];
   const b = arr[i];
   if (!b) return a;
-  return (t - a.fecha > b.fecha - t) ? b : a;
+  return t - a.fecha > b.fecha - t ? b : a;
 }
 
+/* ============================
+   3) D3: SETUP (2 GRÁFICAS)
+============================ */
 
 var margen = { top: 10, right: 30, bottom: 30, left: 80 };
 var ancho = 820 - margen.left - margen.right;
@@ -91,10 +111,13 @@ const svgPrecio = d3
 svgPrecio.append("rect").attr("width", ancho).attr("height", alto).attr("fill", "#F3EBDD");
 
 const defs1 = svgPrecio.append("defs");
-const gradPrecio = defs1.append("linearGradient")
+const gradPrecio = defs1
+  .append("linearGradient")
   .attr("id", "gradPrecio")
-  .attr("x1", "0%").attr("y1", "0%")
-  .attr("x2", "100%").attr("y2", "0%");
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "100%")
+  .attr("y2", "0%");
 gradPrecio.append("stop").attr("offset", "0%").attr("stop-color", "#E8D7B1");
 gradPrecio.append("stop").attr("offset", "100%").attr("stop-color", "#C6A969");
 
@@ -106,14 +129,22 @@ const ejeY1 = d3.axisLeft().scale(y1);
 svgPrecio.append("g").attr("transform", `translate(0, ${alto})`).attr("class", "ejeX ejeX1");
 svgPrecio.append("g").attr("class", "ejeY ejeY1");
 
-const genLineaPrecio = d3.line()
+const genLineaPrecio = d3
+  .line()
   .x((d) => x1(d.fecha))
   .y((d) => y1(d.precio));
 
-svgPrecio.append("g").attr("class", "focusPrecio").append("circle")
-  .attr("r", 5).attr("stroke", "#C6A969").attr("stroke-width", 2).attr("fill", "#FBF7EF");
+svgPrecio
+  .append("g")
+  .attr("class", "focusPrecio")
+  .append("circle")
+  .attr("r", 5)
+  .attr("stroke", "#C6A969")
+  .attr("stroke-width", 2)
+  .attr("fill", "#FBF7EF");
 
-svgPrecio.append("rect")
+svgPrecio
+  .append("rect")
   .attr("class", "overlayPrecio")
   .attr("width", ancho)
   .attr("height", alto)
@@ -132,23 +163,27 @@ svgVol.append("rect").attr("width", ancho).attr("height", alto).attr("fill", "#F
 
 const defs2 = svgVol.append("defs");
 
-// GRDIANTE PARA EL ACTIVO SELECCIONADO
-const gradActPct = defs2.append("linearGradient")
+// GRADIENTE ACTIVO SELECCIONADO
+const gradActPct = defs2
+  .append("linearGradient")
   .attr("id", "gradActPct")
-  .attr("x1", "0%").attr("y1", "0%")
-  .attr("x2", "100%").attr("y2", "0%");
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "100%")
+  .attr("y2", "0%");
 gradActPct.append("stop").attr("offset", "0%").attr("stop-color", "#E8D7B1");
 gradActPct.append("stop").attr("offset", "100%").attr("stop-color", "#C6A969");
 
-
-const gradOroPct = defs2.append("linearGradient")
+// GRADIENTE ORO (PAXG)
+const gradOroPct = defs2
+  .append("linearGradient")
   .attr("id", "gradOroPct")
-  .attr("x1", "0%").attr("y1", "0%")
-  .attr("x2", "100%").attr("y2", "0%");
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "100%")
+  .attr("y2", "0%");
 gradOroPct.append("stop").attr("offset", "0%").attr("stop-color", "#D7E6D0");
 gradOroPct.append("stop").attr("offset", "100%").attr("stop-color", "#6BA368");
-
-
 
 const x2 = d3.scaleTime().range([0, ancho]);
 const y2 = d3.scaleLinear().range([alto, 0]);
@@ -158,22 +193,39 @@ const ejeY2 = d3.axisLeft().scale(y2).tickFormat((v) => v + "%");
 svgVol.append("g").attr("transform", `translate(0, ${alto})`).attr("class", "ejeX ejeX2");
 svgVol.append("g").attr("class", "ejeY ejeY2");
 
-const genLineaPct = d3.line()
+const genLineaPct = d3
+  .line()
   .x((d) => x2(d.fecha))
   .y((d) => y2(d.pct));
 
-svgVol.append("g").attr("class", "focusAct").append("circle")
-  .attr("r", 5).attr("stroke", "#C6A969").attr("stroke-width", 2).attr("fill", "#FBF7EF");
+svgVol
+  .append("g")
+  .attr("class", "focusAct")
+  .append("circle")
+  .attr("r", 5)
+  .attr("stroke", "#C6A969")
+  .attr("stroke-width", 2)
+  .attr("fill", "#FBF7EF");
 
-svgVol.append("g").attr("class", "focusOro").append("circle")
-  .attr("r", 5).attr("stroke", "#6BA368").attr("stroke-width", 2).attr("fill", "#FBF7EF");
+svgVol
+  .append("g")
+  .attr("class", "focusOro")
+  .append("circle")
+  .attr("r", 5)
+  .attr("stroke", "#6BA368")
+  .attr("stroke-width", 2)
+  .attr("fill", "#FBF7EF");
 
-svgVol.append("rect")
+svgVol
+  .append("rect")
   .attr("class", "overlayVol")
   .attr("width", ancho)
   .attr("height", alto)
   .attr("fill", "transparent");
 
+/* ============================
+   4) LÓGICA DE GRÁFICAS
+============================ */
 
 function seriePct(serie) {
   if (!serie || serie.length === 0) return [];
@@ -181,42 +233,40 @@ function seriePct(serie) {
   if (!base || base === 0) return [];
   return serie.map((d) => ({
     fecha: d.fecha,
-    pct: ((d.precio - base) / base) * 100
+    pct: ((d.precio - base) / base) * 100,
   }));
 }
-
 
 function renderPrecio(activo) {
   if (!activo || activo.datos.length === 0) return;
 
   x1.domain(d3.extent(activo.datos, (d) => d.fecha));
-  y1.domain([
-    d3.min(activo.datos, (d) => d.precio),
-    d3.max(activo.datos, (d) => d.precio)
-  ]);
+  y1.domain([d3.min(activo.datos, (d) => d.precio), d3.max(activo.datos, (d) => d.precio)]);
 
   svgPrecio.selectAll(".ejeX1").transition().duration(200).call(ejeX1);
   svgPrecio.selectAll(".ejeY1").transition().duration(200).call(ejeY1);
 
-  svgPrecio.selectAll(".lineaPrecio")
+  svgPrecio
+    .selectAll(".lineaPrecio")
     .data([activo.datos])
     .join("path")
     .attr("class", "lineaPrecio")
     .attr("fill", "none")
     .attr("stroke", "url(#gradPrecio)")
     .attr("stroke-width", 3)
-    .transition().duration(200)
+    .transition()
+    .duration(200)
     .attr("d", genLineaPrecio);
 
-  svgPrecio.select(".overlayPrecio")
+  svgPrecio
+    .select(".overlayPrecio")
     .on("mousemove", function (event) {
       const [mx] = d3.pointer(event, this);
       const t = x1.invert(mx);
       const p = nearestByTime(activo.datos, t);
       if (!p) return;
 
-      svgPrecio.select(".focusPrecio")
-        .attr("transform", `translate(${x1(p.fecha)},${y1(p.precio)})`);
+      svgPrecio.select(".focusPrecio").attr("transform", `translate(${x1(p.fecha)},${y1(p.precio)})`);
 
       if (tooltip) {
         tooltip.innerHTML =
@@ -233,8 +283,6 @@ function renderPrecio(activo) {
     });
 }
 
-
-
 function renderVolatilidad(activoSeleccionado) {
   const oro = obtenerActivo("oro");
   if (!activoSeleccionado || activoSeleccionado.datos.length === 0) return;
@@ -250,25 +298,26 @@ function renderVolatilidad(activoSeleccionado) {
 
   const minPct = d3.min(todas, (d) => d.pct);
   const maxPct = d3.max(todas, (d) => d.pct);
-  const pad = ((maxPct - minPct) * 0.12) || 1;
+  const pad = (maxPct - minPct) * 0.12 || 1;
   y2.domain([minPct - pad, maxPct + pad]);
 
   svgVol.selectAll(".ejeX2").transition().duration(200).call(ejeX2);
   svgVol.selectAll(".ejeY2").transition().duration(200).call(ejeY2);
 
-// ACTIVO SELECCIONADO
-  svgVol.selectAll(".lineaActPct")
+  svgVol
+    .selectAll(".lineaActPct")
     .data([actPct])
     .join("path")
     .attr("class", "lineaActPct")
     .attr("fill", "none")
     .attr("stroke", "url(#gradActPct)")
     .attr("stroke-width", 3)
-    .transition().duration(200)
+    .transition()
+    .duration(200)
     .attr("d", genLineaPct);
 
-// ORO CRIPTO
-  svgVol.selectAll(".lineaOroPct")
+  svgVol
+    .selectAll(".lineaOroPct")
     .data([oroPct])
     .join("path")
     .attr("class", "lineaOroPct")
@@ -276,10 +325,12 @@ function renderVolatilidad(activoSeleccionado) {
     .attr("stroke", "url(#gradOroPct)")
     .attr("stroke-width", 3)
     .attr("stroke-dasharray", "6 4")
-    .transition().duration(200)
+    .transition()
+    .duration(200)
     .attr("d", genLineaPct);
 
-  svgVol.select(".overlayVol")
+  svgVol
+    .select(".overlayVol")
     .on("mousemove", function (event) {
       const [mx] = d3.pointer(event, this);
       const t = x2.invert(mx);
@@ -306,7 +357,9 @@ function renderVolatilidad(activoSeleccionado) {
     });
 }
 
-// ACTUALIZAR TODO
+/* ============================
+   5) ACTUALIZAR TODO
+============================ */
 
 function actualizarTodo() {
   const activoSel = obtenerActivo(menu.value);
@@ -318,8 +371,7 @@ function actualizarTodo() {
   }
 
   if (contexto1 && activoSel.precioActual != null) {
-    contexto1.innerText =
-      "Precio actual de " + activoSel.nombre + ": " + formatoUSD.format(activoSel.precioActual) + " USD.";
+    contexto1.innerText = "Precio actual de " + activoSel.nombre + ": " + formatoUSD.format(activoSel.precioActual) + " USD.";
   }
 
   if (contexto2 && activoSel.datos.length > 0 && activoSel.precioActual != null) {
@@ -345,21 +397,15 @@ function actualizarTodo() {
 
 if (menu) menu.onchange = actualizarTodo;
 
-ws.onmessage = function (mensaje) {
-  const data = JSON.parse(mensaje.data);
-  if (!data || !data.data || !data.data.s) return;
+/* ============================
+   6) INGESTA DE DATOS (WS o REST)
+============================ */
 
-
+function recibirPrecio(nombre, precio) {
+  // KPIs live
   contadorMensajes += 1;
   if (contadorMensajesEl) contadorMensajesEl.innerText = contadorMensajes;
   if (ultimaActualizacionEl) ultimaActualizacionEl.innerText = formatearHora(Date.now());
-
-  const simbolo = data.data.s; // ej: BTCUSDT
-  const nombre = simbolosBinance[simbolo];
-  if (!nombre) return;
-
-  const precio = Number(data.data.c);
-  if (Number.isNaN(precio)) return;
 
   const obj = obtenerActivo(nombre);
   if (!obj) return;
@@ -368,9 +414,76 @@ ws.onmessage = function (mensaje) {
   obj.datos.push({ fecha: Date.now(), precio: precio });
   clampSeries(obj.datos, MAX_PUNTOS);
 
-
   const sel = menu ? menu.value : "bitcoin";
   if (nombre === "oro" || nombre === sel) {
     actualizarTodo();
   }
-};
+}
+
+/* ============================
+   7) WEBSOCKET + FALLBACK
+============================ */
+
+function activarFallbackREST() {
+  if (usandoFallback) return;
+  usandoFallback = true;
+  console.log("✅ Fallback REST activo (algunas redes bloquean WebSocket).");
+
+  async function pollOnce() {
+    const nombres = Object.keys(REST_URLS);
+    await Promise.all(
+      nombres.map(async (n) => {
+        try {
+          const res = await fetch(REST_URLS[n], { cache: "no-store" });
+          const json = await res.json();
+          const precio = Number(json.price);
+          if (!Number.isNaN(precio)) recibirPrecio(n, precio);
+        } catch (e) {
+          // silencio para no spamear consola
+        }
+      })
+    );
+  }
+
+  pollOnce();
+  pollTimer = setInterval(pollOnce, 5000);
+}
+
+function iniciarWS() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    console.log("WS abierto ✅");
+  };
+
+  ws.onmessage = function (mensaje) {
+    const data = JSON.parse(mensaje.data);
+    if (!data || !data.data || !data.data.s) return;
+
+    const simbolo = data.data.s; // ej: BTCUSDT
+    const nombre = simbolosBinance[simbolo];
+    if (!nombre) return;
+
+    const precio = Number(data.data.c);
+    if (Number.isNaN(precio)) return;
+
+    recibirPrecio(nombre, precio);
+  };
+
+  ws.onerror = function () {
+    // onerror suele ser “mudo”, pero indica problema de conexión
+    console.log("WS error ❌ -> activando fallback REST");
+    try { ws.close(); } catch (e) {}
+    activarFallbackREST();
+  };
+
+  ws.onclose = function (e) {
+    // Si se cierra inesperadamente (1006) o pronto, usa fallback
+    if (!usandoFallback) {
+      console.log("WS cerrado ⚠️", e.code, e.reason, "-> fallback REST");
+      activarFallbackREST();
+    }
+  };
+}
+
+iniciarWS();
